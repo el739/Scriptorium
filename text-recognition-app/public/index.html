@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片文字识别</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>图片文字识别工具</h1>
+        <p>上传包含文字的图片，AI将自动识别并提取其中的文字内容</p>
+        
+        <div class="upload-section">
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-content">
+                    <div class="upload-icon">📁</div>
+                    <p>点击选择图片或拖拽图片到此处</p>
+                    <p class="hint">支持 JPG, PNG, WEBP 格式</p>
+                </div>
+                <input type="file" id="fileInput" accept="image/*" hidden>
+            </div>
+            <button id="uploadBtn" class="upload-btn" disabled>上传并识别</button>
+        </div>
+        
+        <div class="preview-section" id="previewSection" style="display: none;">
+            <h2>图片预览</h2>
+            <img id="imagePreview" src="" alt="图片预览">
+        </div>
+        
+        <div class="result-section" id="resultSection" style="display: none;">
+            <h2>识别结果</h2>
+            <div class="result-content">
+                <textarea id="resultText" readonly></textarea>
+                <button id="copyBtn" class="copy-btn">复制文字</button>
+            </div>
+        </div>
+        
+        <div class="loading" id="loading" style="display: none;">
+            <div class="spinner"></div>
+            <p>正在识别中，请稍候...</p>
+        </div>
+        
+        <div class="error-message" id="errorMessage" style="display: none;">
+            <p></p>
+        </div>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>
