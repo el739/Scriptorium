@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cloudflare DNS 管理工具</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-cloud"></i> Cloudflare DNS 管理工具</h1>
+        </header>
+
+        <main>
+            <!-- 域名列表区域 -->
+            <section id="zones-section">
+                <h2><i class="fas fa-globe"></i> 域名列表</h2>
+                <button id="refresh-zones" class="btn btn-primary"><i class="fas fa-sync-alt"></i> 刷新域名列表</button>
+                <div id="zones-container" class="card-container"></div>
+            </section>
+
+            <!-- DNS记录管理区域 -->
+            <section id="records-section" style="display: none;">
+                <h2><i class="fas fa-list"></i> DNS记录管理</h2>
+                <div id="domain-info"></div>
+                <div class="actions">
+                    <button id="back-to-zones" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> 返回域名列表</button>
+                    <button id="add-record" class="btn btn-success"><i class="fas fa-plus"></i> 添加记录</button>
+                    <button id="refresh-records" class="btn btn-primary"><i class="fas fa-sync-alt"></i> 刷新记录</button>
+                </div>
+                <div id="records-container" class="card-container"></div>
+            </section>
+
+            <!-- 添加/编辑记录模态框 -->
+            <div id="record-modal" class="modal">
+                <div class="modal-content">
+                    <span class="close">&times;</span>
+                    <h2 id="modal-title">添加DNS记录</h2>
+                    <form id="record-form">
+                        <input type="hidden" id="zone-id">
+                        <input type="hidden" id="record-id">
+                        <div class="form-group">
+                            <label for="record-type">记录类型:</label>
+                            <select id="record-type" required>
+                                <option value="A">A</option>
+                                <option value="AAAA">AAAA</option>
+                                <option value="CNAME">CNAME</option>
+                                <option value="MX">MX</option>
+                                <option value="TXT">TXT</option>
+                                <option value="SRV">SRV</option>
+                                <option value="NS">NS</option>
+                                <option value="ANAME">ANAME</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="record-name">记录名称:</label>
+                            <input type="text" id="record-name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="record-content">记录内容:</label>
+                            <input type="text" id="record-content" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="record-ttl">TTL:</label>
+                            <input type="number" id="record-ttl" min="1" value="1">
+                            <small>1表示自动</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="record-proxied">
+                                <input type="checkbox" id="record-proxied">
+                                启用Cloudflare代理
+                            </label>
+                        </div>
+                        <button type="submit" class="btn btn-success">保存记录</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- 确认删除模态框 -->
+            <div id="delete-modal" class="modal">
+                <div class="modal-content">
+                    <span class="close">&times;</span>
+                    <h2><i class="fas fa-exclamation-triangle"></i> 确认删除</h2>
+                    <p>您确定要删除这条DNS记录吗？</p>
+                    <p id="delete-record-info"></p>
+                    <div class="modal-actions">
+                        <button id="confirm-delete" class="btn btn-danger">确认删除</button>
+                        <button id="cancel-delete" class="btn btn-secondary">取消</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <p>&copy; 2025 Cloudflare DNS 管理工具</p>
+        </footer>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
