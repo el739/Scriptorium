@@ -1,0 +1,15 @@
+D:\projects\Scriptorium\AutoClicker\obj\Release\net8.0-windows\win-x64\AutoClicker.GeneratedMSBuildEditorConfig.editorconfig
+D:\projects\Scriptorium\AutoClicker\obj\Release\net8.0-windows\win-x64\AutoClicker.AssemblyInfoInputs.cache
+D:\projects\Scriptorium\AutoClicker\obj\Release\net8.0-windows\win-x64\AutoClicker.AssemblyInfo.cs
+D:\projects\Scriptorium\AutoClicker\obj\Release\net8.0-windows\win-x64\AutoClicker.csproj.CoreCompileInputs.cache
+D:\projects\Scriptorium\AutoClicker\obj\Release\net8.0-windows\win-x64\AutoClicker.sourcelink.json
+D:\projects\Scriptorium\AutoClicker\bin\Release\net8.0-windows\win-x64\AutoClicker.exe
+D:\projects\Scriptorium\AutoClicker\bin\Release\net8.0-windows\win-x64\AutoClicker.deps.json
+D:\projects\Scriptorium\AutoClicker\bin\Release\net8.0-windows\win-x64\AutoClicker.runtimeconfig.json
+D:\projects\Scriptorium\AutoClicker\bin\Release\net8.0-windows\win-x64\AutoClicker.dll
+D:\projects\Scriptorium\AutoClicker\bin\Release\net8.0-windows\win-x64\AutoClicker.pdb
+D:\projects\Scriptorium\AutoClicker\obj\Release\net8.0-windows\win-x64\AutoClicker.dll
+D:\projects\Scriptorium\AutoClicker\obj\Release\net8.0-windows\win-x64\refint\AutoClicker.dll
+D:\projects\Scriptorium\AutoClicker\obj\Release\net8.0-windows\win-x64\AutoClicker.pdb
+D:\projects\Scriptorium\AutoClicker\obj\Release\net8.0-windows\win-x64\AutoClicker.genruntimeconfig.cache
+D:\projects\Scriptorium\AutoClicker\obj\Release\net8.0-windows\win-x64\ref\AutoClicker.dll

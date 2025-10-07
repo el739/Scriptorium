@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "xkrMjku89m4=",
+  "success": true,
+  "projectFilePath": "D:\\projects\\Scriptorium\\AutoClicker\\AutoClicker.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\zhang\\.nuget\\packages\\microsoft.net.illink.tasks\\8.0.20\\microsoft.net.illink.tasks.8.0.20.nupkg.sha512"
+  ],
+  "logs": []
+}
