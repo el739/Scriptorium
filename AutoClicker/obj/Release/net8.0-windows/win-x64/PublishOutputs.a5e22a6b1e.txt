@@ -1,2 +1,0 @@
-D:\projects\Scriptorium\AutoClicker\bin\Release\net8.0-windows\win-x64\publish\AutoClicker.pdb
-D:\projects\Scriptorium\AutoClicker\bin\Release\net8.0-windows\win-x64\publish\AutoClicker.exe
