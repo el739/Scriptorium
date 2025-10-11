@@ -3,49 +3,77 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>图片文字识别</title>
+    <title>OCR文字识别与校对</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
-        <h1>图片文字识别工具</h1>
-        <p>上传包含文字的图片，AI将自动识别并提取其中的文字内容</p>
-        
-        <div class="upload-section">
-            <div class="upload-area" id="uploadArea">
-                <div class="upload-content">
-                    <div class="upload-icon">📁</div>
-                    <p>点击选择图片或拖拽图片到此处</p>
-                    <p class="hint">支持 JPG, PNG, WEBP 格式</p>
+        <header>
+            <h1>OCR文字识别与校对</h1>
+            <p class="subtitle">使用OCR.space识别图片文字，由AI智能校对</p>
+        </header>
+
+        <main>
+            <div class="upload-section">
+                <div class="upload-area" id="uploadArea">
+                    <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="17 8 12 3 7 8"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                    <p class="upload-text">点击或拖拽图片到此处</p>
+                    <p class="upload-hint">支持 JPG、PNG、GIF、PDF 格式，最大 1MB</p>
+                    <p class="upload-hint" style="margin-top: 0.5rem; color: var(--primary-color); font-weight: 500;">
+                        💡 提示：也可以使用 <kbd>Ctrl+V</kbd> 直接粘贴剪贴板中的图片
+                    </p>
+                    <input type="file" id="fileInput" accept="image/*,.pdf" hidden>
                 </div>
-                <input type="file" id="fileInput" accept="image/*" hidden>
+
+                <div class="preview-section" id="previewSection" style="display: none;">
+                    <img id="imagePreview" src="" alt="预览图片">
+                    <button class="btn-secondary" id="changeImageBtn">更换图片</button>
+                </div>
             </div>
-            <button id="uploadBtn" class="upload-btn" disabled>上传并识别</button>
-        </div>
-        
-        <div class="preview-section" id="previewSection" style="display: none;">
-            <h2>图片预览</h2>
-            <img id="imagePreview" src="" alt="图片预览">
-        </div>
-        
-        <div class="result-section" id="resultSection" style="display: none;">
-            <h2>识别结果</h2>
-            <div class="result-content">
-                <textarea id="resultText" readonly></textarea>
-                <button id="copyBtn" class="copy-btn">复制文字</button>
+
+            <div class="button-group">
+                <button class="btn-primary" id="recognizeBtn" disabled>
+                    <span class="btn-text">开始识别</span>
+                    <span class="spinner" style="display: none;"></span>
+                </button>
             </div>
-        </div>
-        
-        <div class="loading" id="loading" style="display: none;">
-            <div class="spinner"></div>
-            <p>正在识别中，请稍候...</p>
-        </div>
-        
-        <div class="error-message" id="errorMessage" style="display: none;">
-            <p></p>
-        </div>
+
+            <div class="results-section" id="resultsSection" style="display: none;">
+                <div class="result-card">
+                    <h2>原始识别结果</h2>
+                    <div class="result-content" id="ocrResult">
+                        <p class="placeholder">等待识别...</p>
+                    </div>
+                    <button class="copy-btn" id="copyOcrBtn" style="display: none;">复制</button>
+                </div>
+
+                <div class="divider">
+                    <svg class="arrow-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="9 18 15 12 9 6"></polyline>
+                    </svg>
+                </div>
+
+                <div class="result-card">
+                    <h2>AI校对结果</h2>
+                    <div class="result-content" id="proofreadResult">
+                        <p class="placeholder">等待校对...</p>
+                    </div>
+                    <button class="copy-btn" id="copyProofreadBtn" style="display: none;">复制</button>
+                </div>
+            </div>
+
+            <div class="error-message" id="errorMessage" style="display: none;"></div>
+        </main>
+
+        <footer>
+            <p>Powered by OCR.space & OpenRouter AI</p>
+        </footer>
     </div>
-    
+
     <script src="script.js"></script>
 </body>
 </html>
