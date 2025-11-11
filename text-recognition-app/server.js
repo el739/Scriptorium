@@ -1,207 +1,239 @@
 require('dotenv').config();
 const express = require('express');
+const cors = require('cors');
 const multer = require('multer');
 const axios = require('axios');
 const FormData = require('form-data');
+const fs = require('fs');
 const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// 配置multer用于文件上传
-const storage = multer.memoryStorage();
-const upload = multer({
-    storage: storage,
-    limits: {
-        fileSize: 1024 * 1024 // 1MB限制
-    },
-    fileFilter: (req, file, cb) => {
-        const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'];
-        if (allowedTypes.includes(file.mimetype)) {
-            cb(null, true);
-        } else {
-            cb(new Error('不支持的文件类型'));
-        }
-    }
-});
-
-// 静态文件服务
-app.use(express.static('public'));
+// Middleware
+app.use(cors());
 app.use(express.json());
+app.use(express.static('public'));
 
-// OCR识别端点
-app.post('/api/ocr', upload.single('file'), async (req, res) => {
-    try {
-        if (!req.file) {
-            return res.status(400).json({ error: '请上传文件' });
-        }
-
-        console.log('开始OCR识别...');
-
-        // 第一步：OCR.space识别
-        const ocrText = await performOCR(req.file);
-
-        if (!ocrText) {
-            return res.status(400).json({ error: '未能识别出文字内容' });
-        }
-
-        console.log('OCR识别完成，文本长度:', ocrText.length);
-
-        // 第二步：AI校对
-        let proofreadText = '';
-        try {
-            proofreadText = await proofreadWithAI(ocrText);
-            console.log('AI校对完成');
-        } catch (aiError) {
-            console.error('AI校对失败:', aiError.message);
-            // 即使AI校对失败，也返回OCR结果
-            proofreadText = '校对失败: ' + aiError.message;
-        }
-
-        res.json({
-            ocrText: ocrText,
-            proofreadText: proofreadText
-        });
-
-    } catch (error) {
-        console.error('OCR处理错误:', error);
-        res.status(500).json({
-            error: error.message || '识别过程中出现错误'
-        });
-    }
+// Configure multer for file uploads
+const upload = multer({
+  dest: 'uploads/',
+  limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
 });
 
-// 调用OCR.space API
-async function performOCR(file) {
+// Create uploads directory if it doesn't exist
+if (!fs.existsSync('uploads')) {
+  fs.mkdirSync('uploads');
+}
+
+// OCR endpoint
+app.post('/api/ocr', upload.single('image'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No image file provided' });
+    }
+
+    // Call OCR.space API
     const formData = new FormData();
-    formData.append('file', file.buffer, {
-        filename: file.originalname,
-        contentType: file.mimetype
+
+    // Get file extension from original filename or mimetype
+    let filename = req.file.originalname;
+    if (!path.extname(filename)) {
+      // If no extension, try to determine from mimetype
+      const mimeToExt = {
+        'image/jpeg': '.jpg',
+        'image/jpg': '.jpg',
+        'image/png': '.png',
+        'image/gif': '.gif',
+        'image/bmp': '.bmp',
+        'image/tiff': '.tiff',
+        'image/webp': '.webp'
+      };
+      const ext = mimeToExt[req.file.mimetype] || '.jpg';
+      filename = `image${ext}`;
+    }
+
+    formData.append('file', fs.createReadStream(req.file.path), {
+      filename: filename,
+      contentType: req.file.mimetype
     });
+    formData.append('apikey', process.env.OCR_SPACE_API_KEY);
     formData.append('language', 'auto');
     formData.append('OCREngine', '2');
-    formData.append('isOverlayRequired', 'false');
+    formData.append('isTable', 'true');
     formData.append('detectOrientation', 'true');
-    formData.append('scale', 'true');
 
-    try {
-        const response = await axios.post('https://api.ocr.space/parse/image', formData, {
-            headers: {
-                ...formData.getHeaders(),
-                'apikey': process.env.OCR_SPACE_API_KEY
-            },
-            timeout: 30000
-        });
+    const ocrResponse = await axios.post('https://api.ocr.space/parse/image', formData, {
+      headers: formData.getHeaders(),
+      maxContentLength: Infinity,
+      maxBodyLength: Infinity
+    });
 
-        if (response.data.IsErroredOnProcessing) {
-            throw new Error('OCR识别失败: ' + (response.data.ErrorMessage || '未知错误'));
-        }
+    // Clean up uploaded file
+    fs.unlinkSync(req.file.path);
 
-        if (!response.data.ParsedResults || response.data.ParsedResults.length === 0) {
-            throw new Error('未能解析图片内容');
-        }
-
-        const parsedText = response.data.ParsedResults[0].ParsedText;
-
-        if (!parsedText || parsedText.trim() === '') {
-            throw new Error('未识别到文字内容');
-        }
-
-        return parsedText.trim();
-
-    } catch (error) {
-        if (error.response) {
-            console.error('OCR API错误:', error.response.data);
-            throw new Error('OCR API错误: ' + (error.response.data.ErrorMessage || error.response.statusText));
-        } else if (error.request) {
-            throw new Error('无法连接到OCR服务');
-        } else {
-            throw error;
-        }
-    }
-}
-
-// 使用 LLM API 进行校对
-async function proofreadWithAI(text) {
-    // 从环境变量读取配置
-    const apiKey = process.env.LLM_API_KEY;
-    const baseURL = process.env.LLM_API_BASE_URL || 'https://openrouter.ai/api/v1';
-    const model = process.env.LLM_MODEL || 'zyphra/glm-4.5v';
-
-    if (!apiKey) {
-        throw new Error('LLM_API_KEY 未配置');
+    if (ocrResponse.data.IsErroredOnProcessing) {
+      return res.status(500).json({
+        error: 'OCR processing failed',
+        details: ocrResponse.data.ErrorMessage
+      });
     }
 
-    // 构建 API URL
-    const apiURL = baseURL.endsWith('/chat/completions')
-        ? baseURL
-        : `${baseURL.replace(/\/$/, '')}/chat/completions`;
+    const ocrText = ocrResponse.data.ParsedResults?.[0]?.ParsedText || '';
 
-    try {
-        const response = await axios.post(apiURL, {
-            model: model,
-            messages: [
-                {
-                    role: 'system',
-                    content: '你是一个专业的文字校对助手。请仔细检查OCR识别出的文本，纠正其中的错别字、标点符号错误、格式问题等，保持原文的意思和结构。对于识别错误的数学公式，使用latex格式给出。由于原文的排版，换行符会根据原文的排版来，而不符合人类的阅读习惯，也请你移除不需要的换行符。只返回校对后的文本内容，不要添加任何解释或说明。'
-                },
-                {
-                    role: 'user',
-                    content: `请校对以下OCR识别的文本：\n\n${text}`
-                }
-            ],
-            temperature: 0.3,
-            max_tokens: 4000
-        }, {
-            headers: {
-                'Authorization': `Bearer ${apiKey}`,
-                'Content-Type': 'application/json',
-                'HTTP-Referer': 'http://localhost:3000',
-                'X-Title': 'OCR Proofreading App'
-            },
-            timeout: 60000
-        });
-
-        if (!response.data.choices || response.data.choices.length === 0) {
-            throw new Error('AI未返回有效响应');
-        }
-
-        const proofreadText = response.data.choices[0].message.content.trim();
-        return proofreadText;
-
-    } catch (error) {
-        if (error.response) {
-            console.error('LLM API错误:', error.response.data);
-            throw new Error('AI校对失败: ' + (error.response.data.error?.message || error.response.statusText));
-        } else if (error.request) {
-            throw new Error('无法连接到AI服务');
-        } else {
-            throw error;
-        }
-    }
-}
-
-// 健康检查端点
-app.get('/api/health', (req, res) => {
     res.json({
-        status: 'ok',
-        timestamp: new Date().toISOString()
+      success: true,
+      ocrText: ocrText,
+      fullResponse: ocrResponse.data
     });
-});
 
-// 启动服务器
-app.listen(PORT, () => {
-    console.log(`服务器运行在 http://localhost:${PORT}`);
-    console.log(`OCR.space API Key: ${process.env.OCR_SPACE_API_KEY ? '已配置' : '未配置'}`);
-    console.log(`LLM API Key: ${process.env.LLM_API_KEY ? '已配置' : '未配置'}`);
-    console.log(`LLM API Base URL: ${process.env.LLM_API_BASE_URL || 'https://openrouter.ai/api/v1'}`);
-    console.log(`LLM Model: ${process.env.LLM_MODEL || 'zyphra/glm-4.5v'}`);
-});
+  } catch (error) {
+    console.error('OCR Error:', error.message);
 
-// 错误处理中间件
-app.use((error, req, res, next) => {
-    console.error('服务器错误:', error);
+    // Clean up file if it exists
+    if (req.file && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+
     res.status(500).json({
-        error: error.message || '服务器内部错误'
+      error: 'OCR processing failed',
+      details: error.message
     });
+  }
+});
+
+// LLM proofreading endpoint
+app.post('/api/proofread', async (req, res) => {
+  try {
+    const { imageBase64, ocrText } = req.body;
+
+    if (!imageBase64 || !ocrText) {
+      return res.status(400).json({ error: 'Missing required parameters' });
+    }
+
+    const llmBaseUrl = process.env.LLM_BASE_URL || 'https://api.openai.com/v1';
+    const llmApiKey = process.env.LLM_API_KEY;
+    const llmModel = process.env.LLM_MODEL || 'gpt-4o';
+
+    if (!llmApiKey) {
+      return res.status(400).json({ error: 'LLM API key not configured in server environment' });
+    }
+
+    // Prepare the LLM request
+    const messages = [
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'text',
+            text: `请校对以下OCR识别的文本。这是机器OCR识别的结果，可能存在错误。请根据图片内容进行校对和修正，返回准确的文本内容。
+
+机器OCR识别结果：
+${ocrText}
+
+请直接返回校对后的准确文本，遵守如下规则：
+1、机器ocr会包含许多不应该的换行（这是由原图片的排版引起的），请你在理解语意的基础上，删除这些换行，使得当文字所处的文本框的长宽发生改变时，文字仍然能够正确地显示
+2、如果有复杂的数学公式，使用$或$$包裹起来，以latex格式输出。仅对复杂的数学公式做这样的操作，简单的公式不要。`
+          },
+          {
+            type: 'image_url',
+            image_url: {
+              url: imageBase64.startsWith('data:') ? imageBase64 : `data:image/png;base64,${imageBase64}`
+            }
+          }
+        ]
+      }
+    ];
+
+    // Set headers for Server-Sent Events
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+
+    // Call LLM API with streaming
+    const llmResponse = await axios.post(
+      `${llmBaseUrl}/chat/completions`,
+      {
+        model: llmModel,
+        messages: messages,
+        max_tokens: 4096,
+        stream: true
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${llmApiKey}`,
+          'Content-Type': 'application/json'
+        },
+        responseType: 'stream'
+      }
+    );
+
+    // Forward the stream to client
+    llmResponse.data.on('data', (chunk) => {
+      const lines = chunk.toString().split('\n').filter(line => line.trim() !== '');
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const data = line.slice(6);
+
+          if (data === '[DONE]') {
+            res.write(`data: [DONE]\n\n`);
+            continue;
+          }
+
+          try {
+            const parsed = JSON.parse(data);
+            const content = parsed.choices?.[0]?.delta?.content;
+
+            if (content) {
+              res.write(`data: ${JSON.stringify({ content })}\n\n`);
+            }
+          } catch (e) {
+            // Ignore parsing errors
+          }
+        }
+      }
+    });
+
+    llmResponse.data.on('end', () => {
+      res.write(`data: [DONE]\n\n`);
+      res.end();
+    });
+
+    llmResponse.data.on('error', (error) => {
+      console.error('Stream Error:', error);
+      res.write(`data: ${JSON.stringify({ error: 'Stream error' })}\n\n`);
+      res.end();
+    });
+
+  } catch (error) {
+    console.error('LLM Error:', error.response?.data || error.message);
+
+    // If headers not sent yet, send error as JSON
+    if (!res.headersSent) {
+      res.status(500).json({
+        error: 'LLM proofreading failed',
+        details: error.response?.data?.error?.message || error.message
+      });
+    } else {
+      // If streaming already started, send error as SSE
+      res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
+      res.end();
+    }
+  }
+});
+
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    ocrConfigured: !!process.env.OCR_SPACE_API_KEY,
+    llmConfigured: !!process.env.LLM_API_KEY
+  });
+});
+
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`OCR API configured: ${!!process.env.OCR_SPACE_API_KEY}`);
+  console.log(`LLM API configured: ${!!process.env.LLM_API_KEY}`);
 });
