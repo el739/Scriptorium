@@ -14,12 +14,20 @@ class PDFProcessThread(QThread):
     finished = pyqtSignal(str)
     error = pyqtSignal(str)
     
-    def __init__(self, pdf_path, output_dir, layout, dpi):
+    def __init__(self, pdf_path, layout, dpi, output_dir=None):
         super().__init__()
         self.pdf_path = pdf_path
-        self.output_dir = output_dir
         self.layout = layout
         self.dpi = dpi
+        
+        # 如果没有指定输出目录，使用PDF文件所在目录
+        if output_dir:
+            self.output_dir = output_dir
+        else:
+            self.output_dir = os.path.dirname(pdf_path)
+        
+        # 获取PDF文件名（不含扩展名）
+        self.base_name = os.path.splitext(os.path.basename(pdf_path))[0]
         
     def run(self):
         try:
@@ -28,14 +36,14 @@ class PDFProcessThread(QThread):
             total_pages = len(doc)
             
             # 根据布局确定每张图片包含的页数
-            layout_map = {'2x2': 4, '2x3': 6, '3x3': 9}
+            layout_map = {'2x2': 4, '3x2': 6, '3x3': 9}
             pages_per_image = layout_map[self.layout]
             
             # 计算行列数
             if self.layout == '2x2':
                 rows, cols = 2, 2
-            elif self.layout == '2x3':
-                rows, cols = 2, 3
+            elif self.layout == '3x2':
+                rows, cols = 3, 2
             else:  # 3x3
                 rows, cols = 3, 3
             
@@ -78,14 +86,14 @@ class PDFProcessThread(QThread):
                 
                 # 保存图片
                 output_count += 1
-                output_path = os.path.join(self.output_dir, f'merged_{output_count}.png')
+                output_path = os.path.join(self.output_dir, f'{self.base_name}_merged_{output_count}.png')
                 canvas.save(output_path, 'PNG', quality=95)
                 
                 progress_val = 50 + int((start_idx + pages_per_image) / total_pages * 50)
                 self.progress.emit(min(progress_val, 100))
             
             doc.close()
-            self.finished.emit(f"成功生成 {output_count} 张图片")
+            self.finished.emit(f"成功生成 {output_count} 张图片\n保存位置: {self.output_dir}")
             
         except Exception as e:
             self.error.emit(str(e))
@@ -125,11 +133,11 @@ class PDFMergerGUI(QMainWindow):
         pdf_layout.addWidget(pdf_btn, 1)
         layout.addLayout(pdf_layout)
         
-        # 输出目录选择
+        # 输出目录选择（可选）
         output_layout = QHBoxLayout()
-        self.output_label = QLabel('未选择输出目录')
-        self.output_label.setStyleSheet('padding: 8px; background: #f0f0f0; border-radius: 4px;')
-        output_btn = QPushButton('选择输出目录')
+        self.output_label = QLabel('默认保存到PDF文件所在目录')
+        self.output_label.setStyleSheet('padding: 8px; background: #e8f5e9; border-radius: 4px;')
+        output_btn = QPushButton('自定义输出目录')
         output_btn.clicked.connect(self.select_output)
         output_layout.addWidget(self.output_label, 3)
         output_layout.addWidget(output_btn, 1)
@@ -139,7 +147,7 @@ class PDFMergerGUI(QMainWindow):
         layout_h = QHBoxLayout()
         layout_h.addWidget(QLabel('页面布局:'))
         self.layout_combo = QComboBox()
-        self.layout_combo.addItems(['2x2 (4页)', '2x3 (6页)', '3x3 (9页)'])
+        self.layout_combo.addItems(['2x2 (4页)', '3x2 (6页)', '3x3 (9页)'])
         layout_h.addWidget(self.layout_combo)
         layout_h.addStretch()
         layout.addLayout(layout_h)
@@ -198,24 +206,33 @@ class PDFMergerGUI(QMainWindow):
         if file_path:
             self.pdf_path = file_path
             self.pdf_label.setText(os.path.basename(file_path))
+            
+            # 自动设置输出目录为PDF所在目录
+            self.output_dir = None  # 重置为None，表示使用默认位置
+            pdf_dir = os.path.dirname(file_path)
+            self.output_label.setText(f'输出到: {pdf_dir}')
+            self.output_label.setStyleSheet('padding: 8px; background: #e8f5e9; border-radius: 4px;')
+            
             self.check_ready()
             
     def select_output(self):
         dir_path = QFileDialog.getExistingDirectory(self, '选择输出目录')
         if dir_path:
             self.output_dir = dir_path
-            self.output_label.setText(dir_path)
+            self.output_label.setText(f'自定义输出: {dir_path}')
+            self.output_label.setStyleSheet('padding: 8px; background: #fff3e0; border-radius: 4px;')
             self.check_ready()
             
     def check_ready(self):
-        if self.pdf_path and self.output_dir:
+        # 只要选择了PDF文件就可以转换
+        if self.pdf_path:
             self.convert_btn.setEnabled(True)
             self.status_label.setText('准备就绪')
         
     def start_conversion(self):
         # 获取布局设置
         layout_text = self.layout_combo.currentText()
-        layout = layout_text.split()[0]  # 提取 "2x2", "2x3", "3x3"
+        layout = layout_text.split()[0]  # 提取 "2x2", "3x2", "3x3"
         
         # 获取DPI
         dpi = self.dpi_spin.value()
@@ -226,8 +243,8 @@ class PDFMergerGUI(QMainWindow):
         self.progress_bar.setValue(0)
         self.status_label.setText('处理中...')
         
-        # 创建处理线程
-        self.thread = PDFProcessThread(self.pdf_path, self.output_dir, layout, dpi)
+        # 创建处理线程（如果output_dir为None，线程会自动使用PDF所在目录）
+        self.thread = PDFProcessThread(self.pdf_path, layout, dpi, self.output_dir)
         self.thread.progress.connect(self.update_progress)
         self.thread.finished.connect(self.conversion_finished)
         self.thread.error.connect(self.conversion_error)
@@ -239,7 +256,7 @@ class PDFMergerGUI(QMainWindow):
     def conversion_finished(self, message):
         self.progress_bar.setVisible(False)
         self.convert_btn.setEnabled(True)
-        self.status_label.setText(message)
+        self.status_label.setText('转换完成')
         QMessageBox.information(self, '完成', message)
         
     def conversion_error(self, error_msg):
