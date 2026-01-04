@@ -1,0 +1,21 @@
+{
+  "name": "deepl-cloudflare",
+  "version": "1.0.0",
+  "description": "DeepL Translation service on Cloudflare Workers",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "keywords": [
+    "deepl",
+    "translation",
+    "cloudflare",
+    "workers"
+  ],
+  "author": "el739",
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "wrangler": "^4.54.0"
+  }
+}

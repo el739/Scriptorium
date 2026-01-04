@@ -1,0 +1,6 @@
+name = "deepl-translator"
+main = "src/index.js"
+compatibility_date = "2025-07-18"
+
+[vars]
+# DEEPL_API_KEY will be set as a secret, not here
